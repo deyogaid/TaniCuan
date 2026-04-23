@@ -1,5 +1,12 @@
-import { createServerClient } from "@supabase/ssr"
-import { cookies } from "next/headers"
+/**
+ * lib/supabase/server.ts
+ * Supabase client untuk Server Components dan Route Handlers
+ * Menggunakan @supabase/ssr (sudah ada di package.json)
+ * 
+ * Kompatibel dengan: Next.js 16 App Router + React 19
+ */
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 
 export async function createClient() {
   const cookieStore = await cookies()
@@ -18,11 +25,22 @@ export async function createClient() {
               cookieStore.set(name, value, options)
             )
           } catch {
-            // The "setAll" method was called from a Server Component.
-            // This can be ignored if you have middleware refreshing user sessions.
+            // Diabaikan di Server Components — middleware menangani refresh
           }
         },
       },
+    }
+  )
+}
+
+// Client dengan service role (untuk Cron Jobs & internal API)
+export function createServiceClient() {
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      cookies: { getAll: () => [], setAll: () => {} },
+      auth: { persistSession: false }
     }
   )
 }
