@@ -1,2 +1,0 @@
-# TaniCuan
-Aplikasi transparansi tani
