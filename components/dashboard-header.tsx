@@ -55,18 +55,36 @@ export function DashboardHeader({ onRefresh, isRefreshing }: DashboardHeaderProp
   )
 }
 
+import { useState, useEffect } from 'react'
+
 function LastUpdated() {
-  const now = new Date()
-  const timeString = now.toLocaleTimeString('id-ID', {
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-  const dateString = now.toLocaleDateString('id-ID', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  })
+  const [timeString, setTimeString] = useState('')
+  const [dateString, setDateString] = useState('')
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+    const updateTime = () => {
+      const now = new Date()
+      setTimeString(now.toLocaleTimeString('id-ID', {
+        hour: '2-digit',
+        minute: '2-digit',
+      }))
+      setDateString(now.toLocaleDateString('id-ID', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      }))
+    }
+    updateTime()
+    const interval = setInterval(updateTime, 60000)
+    return () => clearInterval(interval)
+  }, [])
+
+  if (!mounted) {
+    return <div className="text-xs opacity-80">Loading...</div>
+  }
 
   return (
     <div className="text-xs opacity-80">
