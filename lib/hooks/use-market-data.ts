@@ -1,14 +1,21 @@
 'use client'
 
 import useSWR from 'swr'
-import { createClient } from '@/lib/supabase/client'
+import { createBrowserClient } from '@supabase/ssr'
 import type { Commodity, Market, PriceHistory, CommodityPriceData, OHLCData } from '@/lib/types'
 import { calculateTrafficSignal } from '@/lib/signal-utils'
 
-const supabase = createClient()
+// Create client inside functions to avoid SSR issues
+function getSupabaseClient() {
+  return createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
+}
 
 // Fetcher functions
 async function fetchCommodities(): Promise<Commodity[]> {
+  const supabase = getSupabaseClient()
   const { data, error } = await supabase
     .from('commodities')
     .select('*')
@@ -19,6 +26,7 @@ async function fetchCommodities(): Promise<Commodity[]> {
 }
 
 async function fetchMarkets(): Promise<Market[]> {
+  const supabase = getSupabaseClient()
   const { data, error } = await supabase
     .from('markets')
     .select('*')
@@ -33,6 +41,7 @@ async function fetchPriceHistory(
   marketId: string,
   days: number = 30
 ): Promise<PriceHistory[]> {
+  const supabase = getSupabaseClient()
   const startDate = new Date()
   startDate.setDate(startDate.getDate() - days)
   
