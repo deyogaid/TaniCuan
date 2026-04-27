@@ -96,21 +96,171 @@ export async function syncTransactionToGateway(
 - Maksimalkan **visualisasi warna** (sinyal lampu lalu lintas)
 - Akomodasi petani dengan literasi digital rendah
 
+## 4. Insight Produk
+
+### Transformasi Data Menjadi Aksi
+**Traffic Light Signal** bukan sekadar visualisasi warna. Ini adalah langkah krusial untuk mengatasi variasi literasi digital di lapangan. Namun, sinyal ini HARUS didukung oleh:
+- **Model GARCH**: Menangkap volatilitas harian untuk sinyal akurat
+- **Model LSTM**: Prediksi jangka menengah (7 hari, MAPE < 7%) agar petani tidak terjebak dalam "banjir pasokan" yang tiba-tiba
+
+**Target**: Tingkatkan akurasi prediksi dengan memasukkan variabel eksogen seperti curah hujan dan hari raya keagamaan.
+
+### Solusi atas Sistem Ijon
+**Farmer Credit Scores** bukan sekadar angka. Ini adalah senjata untuk memutus ketergantungan petani pada sistem ijon yang eksploitatif dengan menyediakan:
+- Rekam jejak digital yang diakui perbankan
+- Trust Score berbasis transaksi dan data crowdsourcing
+- Blockchain-backed immutable ledger untuk transparansi penuh
+
+**Tujuan**: Memberdayakan petani dengan alternatif pembiayaan yang lebih menguntungkan dan adil.
+
+### Urgensi Offline-First
+Mengingat infrastruktur pedesaan yang belum merata, fitur offline-first adalah penyelamat:
+- **Background Sync**: Sinkronisasi otomatis ketika ada koneksi
+- **IndexedDB**: Local storage untuk data panen langsung dari lahan tanpa sinyal
+- **Graceful Degradation**: Aplikasi tetap berfungsi bahkan saat offline
+
+## 5. Roadmap & Recommendations
+
+### Priority 1: Whale Alert (Deteksi Penumpukan Stok)
+**Tujuan**: Mencegah "banjir pasokan" yang tiba-tiba dengan mendeteksi penumpukan stok besar di wilayah tertentu.
+
+**Implementasi**:
+```
+POST /api/alerts/whale-detection
+{
+  "commodity_id": "cabai-merah",
+  "region": "tangerang-selatan",
+  "stock_threshold": 500,  // threshold dalam ton
+  "alert_radius_km": 50    // radius notifikasi ke petani terdekat
+}
+```
+
+- Jika stok cabai di satu kecamatan melonjak drastis, aplikasi segera memberi peringatan
+- Petani di wilayah tetangga tidak akan melakukan panen serentak yang menjatuhkan harga
+- Integrasi dengan gateway untuk real-time crowdsourced stock data
+
+### Priority 2: Blockchain Traceability untuk Transactions
+**Tujuan**: Memungkinkan consumer/B2B pembeli untuk melacak asal-usul produk, meningkatkan nilai jual produk petani.
+
+**Implementasi**:
+- Smart Contract untuk setiap transaksi dengan fields:
+  - `farmer_id` (dari farmer_credit_scores)
+  - `commodity_batch_id` (identifikasi unik untuk batch panen)
+  - `transaction_timestamp`
+  - `location_coordinates` (GPS dari tempat transaksi)
+  - `quality_metrics` (dari crowdsourced data validation)
+  
+**Benefit**: Konsumen akhir bisa scan QR code dan melihat perjalanan produk dari petani → pasar → distributor
+
+### Priority 3: LSTM dengan Exogenous Variables
+**Tujuan**: Meningkatkan akurasi prediksi LSTM dari target MAPE < 7% dengan menambahkan konteks eksternal.
+
+**Variables yang harus diintegrasikan**:
+- **Curah Hujan** (data publik dari BMKG)
+- **Hari Raya Keagamaan** (Ramadhan, Lebaran, Tahun Baru Imlek, dll)
+- **Kalender Panen Regional** (musim panen setiap komoditas)
+- **Price Floor/Ceiling** (stabilisasi harga dari Pemerintah)
+- **Seasonal Patterns** (pola historis per musim)
+
+**API Endpoint**:
+```
+GET /api/predictions/lstm-advanced
+?commodity_id=cabai-merah
+&days=7
+&include_weather=true
+&include_holidays=true
+&market_id=pasar-beringharjo
+```
+
+### Priority 4: Optimize Traffic Light Signal dengan GARCH
+**Tujuan**: Sinyal yang lebih akurat dengan menangkap volatilitas real-time, bukan hanya rata-rata harga.
+
+**GARCH Model Specifications**:
+- **Red Signal**: Volatilitas tinggi + prediksi penurunan harga → JANGAN PANEN
+- **Yellow Signal**: Volatilitas sedang + trend unclear → TUNDA ATAU KONSULTASI
+- **Green Signal**: Volatilitas rendah + prediksi kenaikan harga → LANJUTKAN PANEN
+
+**Implementation**:
+- Update traffic light logic di gateway AI Studio
+- Ensure gateway returns `confidence_level` dan `volatility_index` dalam response
+
+### Priority 5: Background Sync & IndexedDB untuk Offline-First
+**Tujuan**: Petani dapat input data panen offline dan sinkronisasi otomatis ketika ada koneksi.
+
+**Implementasi**:
+- Gunakan Service Worker untuk background sync
+- Store di IndexedDB dengan `sync_status: 'pending' | 'synced'`
+- Queue mechanism untuk retry jika sync gagal
+- Conflict resolution jika ada duplikat entry
+
+**Database Schema** (IndexedDB):
+```javascript
+{
+  objectStores: [
+    {
+      name: 'pending_transactions',
+      keyPath: 'id',
+      indexes: [
+        { name: 'sync_status', keyPath: 'sync_status' },
+        { name: 'created_at', keyPath: 'created_at' }
+      ]
+    }
+  ]
+}
+```
+
 ## Output yang Diharapkan
 
-Ketika diminta membangun fitur:
+Ketika diminta membangun fitur, pastikan deliverable mencakup:
 
-1. **Backend/API**: Sertakan skema database dengan kolom `trust_score`, `crowdsource_timestamp`, `source_type`
-2. **Frontend**: Komponen harus mendukung mode offline-first dan visualisasi Candlestick
-3. **AI/ML**: Siapkan endpoint GARCH (sinyal) dan LSTM (prediksi) dengan format output yang jelas
-4. **Blockchain**: Desain struktur data untuk immutable ledger (transaksi petani)
+1. **Backend/API**: 
+   - Sertakan skema database dengan kolom `trust_score`, `crowdsource_timestamp`, `source_type`
+   - Implementasi API endpoint dengan proper error handling dan rate limiting
+   - Webhook support untuk background sync dan real-time notifications
+
+2. **Frontend**: 
+   - Komponen harus mendukung mode offline-first dengan IndexedDB
+   - Visualisasi Candlestick chart yang responsive
+   - Service Worker untuk background sync dan offline capability
+   - Fallback UI untuk saat offline
+
+3. **AI/ML**: 
+   - Endpoint GARCH dengan `confidence_level` dan `volatility_index` dalam response
+   - Endpoint LSTM dengan exogenous variables (curah hujan, hari raya, kalender panen)
+   - Format output yang jelas dengan prediction interval (low-high)
+   - Target akurasi: MAPE < 7% untuk LSTM
+
+4. **Blockchain**: 
+   - Desain struktur data untuk immutable ledger (transaksi petani)
+   - Smart contract dengan fields: farmer_id, commodity_batch_id, location_coordinates, quality_metrics
+   - QR code integration untuk consumer traceability
+
+5. **Data Integration** (Whale Alert):
+   - Real-time stock aggregation dari regional crowdsource data
+   - Alert mechanism ketika stock threshold terlampaui
+   - Notifikasi ke petani dalam radius tertentu
+
+6. **Testing & Documentation**:
+   - Unit tests untuk setiap API endpoint
+   - Integration tests untuk offline-first sync flow
+   - API documentation dengan cURL examples
+   - Database migration scripts
 
 ## Contoh Invokasi
 
+**Fitur Dasar**:
 ```
 /tanicuan-fullstack --fitur candlestick-chart --komoditas beras
 /tanicuan-fullstack --fitur api-prediksi --model garch
 /tanicuan-fullstack --fitur offline-sync --komponen database
+```
+
+**Fitur Lanjutan (dari Roadmap)**:
+```
+/tanicuan-fullstack --fitur whale-alert --komoditas cabai-merah --region tangerang
+/tanicuan-fullstack --fitur blockchain-traceability --komponen smart-contract
+/tanicuan-fullstack --fitur lstm-advanced --include-variables weather,holidays,seasonal
+/tanicuan-fullstack --fitur background-sync --komponen service-worker
 ```
 
 ## Referensi

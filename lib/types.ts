@@ -12,10 +12,15 @@ export interface Commodity {
 export interface Market {
   id: string
   name: string
-  location: string | null
+  city: string | null
   province: string | null
+  latitude: number | null
+  longitude: number | null
+  is_active: boolean
   is_primary: boolean
   created_at: string
+  // Computed field for distance (in km)
+  distance?: number
 }
 
 export interface PriceHistory {
@@ -47,6 +52,15 @@ export interface OHLCData {
   volume: number
 }
 
+// Price prediction data
+export interface PricePrediction {
+  date: string
+  predicted_price: number
+  price_low: number
+  price_high: number
+  confidence_level: number
+}
+
 // Traffic light signal type
 export type SignalType = 'red' | 'yellow' | 'green'
 
@@ -67,9 +81,38 @@ export interface CommodityPriceData {
   priceChangePercent: number
   signal: TrafficSignal
   ohlcData: OHLCData[]
+  predictions?: PricePrediction[]
+  priceMode?: number
 }
 
-// Format helpers
+// Transaction data
+export interface Transaction {
+  id: string
+  user_id: string | null
+  commodity_id: string
+  market_id: string
+  transaction_type: 'buy' | 'sell'
+  quantity: number
+  price_per_unit: number
+  total_amount: number
+  transaction_date: string
+  notes: string | null
+  created_at: string
+  commodity?: {
+    name: string
+    category: string
+  }
+  market?: {
+    name: string
+  }
+}
+
+// Payload for syncing transaction to gateway
+export interface TransactionPayload {
+  commodity_id: string
+  quantity: number
+  price: number
+}
 export function formatRupiah(value: number): string {
   return new Intl.NumberFormat('id-ID', {
     style: 'currency',

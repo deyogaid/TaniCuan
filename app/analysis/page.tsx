@@ -27,6 +27,8 @@ export default function AnalysisPage() {
     const handleTabChange = (tab: string) => {
         if (tab === 'home') {
             router.push('/')
+        } else if (tab === 'community') {
+            router.push('/community')
         } else if (tab === 'alerts') {
             // TODO: implement alerts page
         } else if (tab === 'profile') {

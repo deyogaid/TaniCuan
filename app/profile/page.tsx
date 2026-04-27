@@ -49,6 +49,8 @@ export default function ProfilePage() {
             router.push('/')
         } else if (tab === 'analysis') {
             router.push('/analysis')
+        } else if (tab === 'community') {
+            router.push('/community')
         } else if (tab === 'alerts') {
             // TODO: implement alerts page
         }

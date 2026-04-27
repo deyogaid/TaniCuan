@@ -1,6 +1,7 @@
 'use client'
 
-import { RefreshCw, Bell, Menu } from 'lucide-react'
+import Link from 'next/link'
+import { RefreshCw, Bell } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 

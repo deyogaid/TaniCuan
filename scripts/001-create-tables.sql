@@ -15,8 +15,11 @@ CREATE TABLE IF NOT EXISTS commodities (
 CREATE TABLE IF NOT EXISTS markets (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
-  location TEXT,
+  city TEXT,
   province TEXT,
+  latitude DECIMAL(10, 8),
+  longitude DECIMAL(11, 8),
+  is_active BOOLEAN DEFAULT true,
   is_primary BOOLEAN DEFAULT false,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );

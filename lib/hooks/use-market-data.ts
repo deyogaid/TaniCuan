@@ -1,8 +1,9 @@
 'use client'
 
+import { useMemo } from 'react'
 import useSWR from 'swr'
 import { createBrowserClient } from '@supabase/ssr'
-import type { Commodity, Market, PriceHistory, CommodityPriceData, OHLCData } from '@/lib/types'
+import type { Commodity, Market, PriceHistory, CommodityPriceData, OHLCData, PricePrediction } from '@/lib/types'
 import { calculateTrafficSignal } from '@/lib/signal-utils'
 
 // Create client inside functions to avoid SSR issues
@@ -20,7 +21,7 @@ async function fetchCommodities(): Promise<Commodity[]> {
     .from('commodities')
     .select('*')
     .order('name')
-  
+
   if (error) throw error
   return data || []
 }
@@ -29,10 +30,11 @@ async function fetchMarkets(): Promise<Market[]> {
   const supabase = getSupabaseClient()
   const { data, error } = await supabase
     .from('markets')
-    .select('*')
+    .select('id, name, city, province, latitude, longitude, is_active, is_primary, created_at')
+    .eq('is_active', true)
     .order('is_primary', { ascending: false })
     .order('name')
-  
+
   if (error) throw error
   return data || []
 }
@@ -44,16 +46,27 @@ async function fetchPriceHistory(
   const supabase = getSupabaseClient()
   const startDate = new Date()
   startDate.setDate(startDate.getDate() - days)
-  
+
   const { data, error } = await supabase
     .from('price_history')
     .select('*')
     .eq('market_id', marketId)
     .gte('date', startDate.toISOString().split('T')[0])
     .order('date', { ascending: true })
-  
+
   if (error) throw error
   return data || []
+}
+
+async function fetchPredictions(commodityId: string, days: number = 7): Promise<{
+  signal: any
+  price_mode: number
+  predictions: PricePrediction[]
+  cached: boolean
+}> {
+  const response = await fetch(`/api/predictions/${commodityId}?days=${days}`)
+  if (!response.ok) throw new Error('Failed to fetch predictions')
+  return response.json()
 }
 
 // Transform price history to OHLC format
@@ -78,22 +91,22 @@ function processCommodityData(
     const prices = priceHistory
       .filter(p => p.commodity_id === commodity.id)
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-    
+
     const ohlcData = toOHLCData(prices)
-    
+
     // Get latest and previous prices
     const latestPrice = prices.length > 0 ? Number(prices[prices.length - 1].close_price) : 0
     const previousPrice = prices.length > 1 ? Number(prices[prices.length - 2].close_price) : latestPrice
-    
+
     // Calculate change
     const priceChange = latestPrice - previousPrice
-    const priceChangePercent = previousPrice > 0 
-      ? ((latestPrice - previousPrice) / previousPrice) * 100 
+    const priceChangePercent = previousPrice > 0
+      ? ((latestPrice - previousPrice) / previousPrice) * 100
       : 0
-    
+
     // Calculate signal
     const signal = calculateTrafficSignal(ohlcData)
-    
+
     return {
       commodity,
       latestPrice,
@@ -128,6 +141,7 @@ export function usePriceHistory(marketId: string | null, days: number = 30) {
     {
       revalidateOnFocus: false,
       dedupingInterval: 30000, // 30 seconds
+      keepPreviousData: true,
     }
   )
 }
@@ -136,23 +150,26 @@ export function usePriceHistory(marketId: string | null, days: number = 30) {
 export function useDashboardData(marketId: string | null) {
   const { data: commodities, error: commoditiesError, isLoading: loadingCommodities } = useCommodities()
   const { data: priceHistory, error: priceError, isLoading: loadingPrices, mutate } = usePriceHistory(marketId)
-  
+
   const isLoading = loadingCommodities || loadingPrices
   const error = commoditiesError || priceError
-  
+
   // Process data
-  const commodityData = commodities && priceHistory
-    ? processCommodityData(commodities, priceHistory)
-    : []
-  
+  const commodityData = useMemo(() => {
+    if (!commodities || !priceHistory) return []
+    return processCommodityData(commodities, priceHistory)
+  }, [commodities, priceHistory])
+
   // Sort by signal priority: green > yellow > red, then by price change
-  const sortedData = [...commodityData].sort((a, b) => {
-    const signalOrder = { green: 0, yellow: 1, red: 2 }
-    const signalDiff = signalOrder[a.signal.signal] - signalOrder[b.signal.signal]
-    if (signalDiff !== 0) return signalDiff
-    return Math.abs(b.priceChangePercent) - Math.abs(a.priceChangePercent)
-  })
-  
+  const sortedData = useMemo(() => {
+    return [...commodityData].sort((a, b) => {
+      const signalOrder = { green: 0, yellow: 1, red: 2 }
+      const signalDiff = signalOrder[a.signal.signal] - signalOrder[b.signal.signal]
+      if (signalDiff !== 0) return signalDiff
+      return Math.abs(b.priceChangePercent) - Math.abs(a.priceChangePercent)
+    })
+  }, [commodityData])
+
   return {
     commodityData: sortedData,
     isLoading,

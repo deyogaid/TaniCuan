@@ -1,7 +1,7 @@
 'use client'
 
 import { cn } from '@/lib/utils'
-import { Home, BarChart3, Bell, User } from 'lucide-react'
+import { Home, BarChart3, Bell, User, Users } from 'lucide-react'
 
 interface MobileNavProps {
   activeTab?: string
@@ -11,6 +11,7 @@ interface MobileNavProps {
 const navItems = [
   { id: 'home', label: 'Beranda', icon: Home },
   { id: 'analysis', label: 'Analisis', icon: BarChart3 },
+  { id: 'community', label: 'Komunitas', icon: Users },
   { id: 'alerts', label: 'Notifikasi', icon: Bell },
   { id: 'profile', label: 'Profil', icon: User },
 ]
@@ -22,7 +23,7 @@ export function MobileNav({ activeTab = 'home', onTabChange }: MobileNavProps) {
         {navItems.map(item => {
           const Icon = item.icon
           const isActive = activeTab === item.id
-          
+
           return (
             <button
               key={item.id}
