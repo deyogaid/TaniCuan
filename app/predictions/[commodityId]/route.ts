@@ -6,7 +6,7 @@
  * POST /api/predictions/generate (dari Cron)
  *
  * Stack: Next.js 16 + Supabase + recharts-compatible output
- * Tidak butuh dependency tambahan — murni Supabase query + algoritma lokal
+ * Integrated with AI Studio for enhanced predictions
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -46,6 +46,50 @@ function computePriceMode(prices: number[]): number {
     if (freq[p] > maxFreq) { maxFreq = freq[p]; mode = p }
   }
   return mode
+}
+
+// ─── Call AI Studio for Enhanced Predictions ────────────────────────────────
+async function getAIPredictions(prices: number[], days: number): Promise<PricePrediction[] | null> {
+  try {
+    const aiStudioUrl = process.env.NODE_ENV === 'production'
+      ? process.env.AI_STUDIO_SHARED_URL
+      : process.env.AI_STUDIO_DEV_URL
+
+    if (!aiStudioUrl) {
+      console.warn('AI Studio URL not configured, falling back to local predictions')
+      return null
+    }
+
+    const response = await fetch(`${aiStudioUrl}/predict`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        historical_prices: prices,
+        prediction_days: days,
+      }),
+    })
+
+    if (!response.ok) {
+      console.warn(`AI Studio API error: ${response.status}`)
+      return null
+    }
+
+    const data = await response.json()
+
+    // Assume AI Studio returns array of predictions with date, predicted_price, confidence_level
+    return data.predictions.map((p: any) => ({
+      date: p.date,
+      predicted_price: Math.round(p.predicted_price),
+      price_low: Math.round(p.price_low || p.predicted_price * 0.95),
+      price_high: Math.round(p.price_high || p.predicted_price * 1.05),
+      confidence_level: p.confidence_level || 80,
+    }))
+  } catch (error) {
+    console.error('Error calling AI Studio:', error)
+    return null
+  }
 }
 
 // ─── Traffic Light Signal ─────────────────────────────────────────────────────
@@ -148,23 +192,36 @@ export async function GET(
 
   const supabase = createServiceClient()
 
-  // 1. Cek cache prediksi
-  const { data: cached } = await supabase
-    .from('price_predictions')
-    .select('*')
-    .eq('commodity_id', commodityId)
-    .gte('prediction_date', new Date().toISOString().split('T')[0])
-    .order('prediction_date')
-    .limit(days)
+  // Get primary market ID, cached prediction, and price history in parallel
+  const [primaryMarketResult, cachedResult, historyResult] = await Promise.all([
+    supabase
+      .from('markets')
+      .select('id')
+      .eq('is_primary', true)
+      .limit(1)
+      .single(),
 
-  // 2. Ambil data historis untuk sinyal
-  const { data: history } = await supabase
-    .from('price_history')
-    .select('close_price')
-    .eq('commodity_id', commodityId)
-    .eq('is_validated', true)
-    .order('date', { ascending: false })
-    .limit(30)
+    supabase
+      .from('price_predictions')
+      .select('*')
+      .eq('commodity_id', commodityId)
+      .gte('prediction_date', new Date().toISOString().split('T')[0])
+      .order('prediction_date')
+      .limit(days),
+
+    supabase
+      .from('price_history')
+      .select('close_price')
+      .eq('commodity_id', commodityId)
+      .eq('is_validated', true)
+      .order('date', { ascending: false })
+      .limit(30),
+  ])
+
+  const primaryMarket = primaryMarketResult.data
+  const defaultMarketId = primaryMarket?.id || 'default-market-id'
+  const cached = cachedResult.data
+  const history = historyResult.data
 
   const prices = (history ?? []).map((h) => h.close_price as number).reverse()
 
@@ -178,7 +235,7 @@ export async function GET(
       predictions: cached.map((p) => ({
         date: p.prediction_date,
         predicted_price: p.predicted_price,
-        price_low:  Math.round((p.predicted_price as number) * 0.92),
+        price_low: Math.round((p.predicted_price as number) * 0.92),
         price_high: Math.round((p.predicted_price as number) * 1.08),
         confidence_level: p.confidence_level,
       })),
@@ -186,8 +243,18 @@ export async function GET(
     })
   }
 
-  // 3. Generate fresh
-  const freshPredictions = computeLocalForecast(prices, days)
+  // 3. Generate fresh predictions (try AI Studio first, fallback to local)
+  const aiPredictions = await getAIPredictions(prices, days)
+  let freshPredictions: PricePrediction[]
+  let usedAI = false
+
+  if (aiPredictions && aiPredictions.length > 0) {
+    freshPredictions = aiPredictions
+    usedAI = true
+  } else {
+    console.log('Using local forecast as fallback')
+    freshPredictions = computeLocalForecast(prices, days)
+  }
 
   if (freshPredictions.length === 0) {
     return NextResponse.json(
@@ -197,31 +264,32 @@ export async function GET(
   }
 
   // 4. Simpan ke DB (non-blocking)
+  const modelVersion = usedAI ? 'ai-studio-v1' : 'linear-regression-v1'
   const insertData = freshPredictions.map((p) => ({
-    commodity_id:    commodityId,
-    market_id:       process.env.DEFAULT_MARKET_ID,
+    commodity_id: commodityId,
+    market_id: defaultMarketId,
     prediction_date: p.date,
     predicted_price: p.predicted_price,
     confidence_level: p.confidence_level,
-    model_version:   'linear-regression-v1',
+    model_version: modelVersion,
   }))
 
-  supabase.from('price_predictions').insert(insertData).then(() => {})
+  supabase.from('price_predictions').insert(insertData).then(() => { })
 
   const signal = computeSignal(prices, freshPredictions[0].predicted_price)
 
   // 5. Simpan sinyal ke commodity_signals
   supabase.from('commodity_signals').upsert({
-    commodity_id:  commodityId,
-    signal_color:  signal.color,
-    signal_label:  signal.label_text,
-    action_text:   signal.action_text,
+    commodity_id: commodityId,
+    signal_color: signal.color,
+    signal_label: signal.label_text,
+    action_text: signal.action_text,
     confidence_pct: signal.confidence_pct,
-    price_mode:    computePriceMode(prices),
-    model_raw:     signal.model_raw,
-    computed_at:   new Date().toISOString(),
-    valid_until:   new Date(Date.now() + 3_600_000).toISOString(),
-  }, { onConflict: 'commodity_id' }).then(() => {})
+    price_mode: computePriceMode(prices),
+    model_raw: signal.model_raw,
+    computed_at: new Date().toISOString(),
+    valid_until: new Date(Date.now() + 3_600_000).toISOString(),
+  }, { onConflict: 'commodity_id' }).then(() => { })
 
   return NextResponse.json({
     commodity_id: commodityId,
@@ -274,12 +342,12 @@ export async function POST(request: NextRequest) {
 
     await supabase.from('price_predictions').insert(
       predictions.map((p) => ({
-        commodity_id:    commodity.id,
-        market_id:       process.env.DEFAULT_MARKET_ID,
+        commodity_id: commodity.id,
+        market_id: process.env.DEFAULT_MARKET_ID,
         prediction_date: p.date,
         predicted_price: p.predicted_price,
         confidence_level: p.confidence_level,
-        model_version:   'linear-regression-v1',
+        model_version: 'linear-regression-v1',
       }))
     )
 

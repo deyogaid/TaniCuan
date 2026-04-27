@@ -11,17 +11,20 @@ import type { CommodityPriceData } from '@/lib/types'
 import { formatRupiah, formatPercent, formatDate } from '@/lib/types'
 import { CandlestickChart } from './candlestick-chart'
 import { TrafficLightSignal } from './traffic-light-signal'
-import { TrendingUp, TrendingDown, BarChart3, Calendar } from 'lucide-react'
+import { TrendingUp, TrendingDown, BarChart3, Calendar, Brain } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { usePredictions } from '@/lib/hooks/use-predictions'
 
 interface CommodityDetailSheetProps {
-  data: CommodityPriceData | null
+  data: CommodityPriceData | undefined
+  marketId: string | null
   isOpen: boolean
   onClose: () => void
 }
 
 export function CommodityDetailSheet({
   data,
+  marketId,
   isOpen,
   onClose,
 }: CommodityDetailSheetProps) {
@@ -29,6 +32,9 @@ export function CommodityDetailSheet({
 
   const { commodity, latestPrice, priceChangePercent, signal, ohlcData } = data
   const isPositive = priceChangePercent >= 0
+
+  // Fetch predictions
+  const { data: predictionData, isLoading: loadingPredictions } = usePredictions(data.commodity.id, marketId)
 
   // Calculate stats
   const weekData = ohlcData.slice(-7)
@@ -109,6 +115,82 @@ export function CommodityDetailSheet({
             </CardContent>
           </Card>
 
+          {/* AI Predictions */}
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-semibold flex items-center gap-2">
+                  <Brain className="w-4 h-4 text-primary" />
+                  Prediksi Harga (7 Hari)
+                </h3>
+                {loadingPredictions && (
+                  <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                )}
+              </div>
+
+              {predictionData ? (
+                <div className="space-y-3">
+                  {/* Current Signal from AI */}
+                  <div className={cn(
+                    'p-3 rounded-lg border-2',
+                    predictionData.signal.color === 'GREEN' && 'border-green-500 bg-green-50 dark:bg-green-950/20',
+                    predictionData.signal.color === 'YELLOW' && 'border-yellow-500 bg-yellow-50 dark:bg-yellow-950/20',
+                    predictionData.signal.color === 'RED' && 'border-red-500 bg-red-50 dark:bg-red-950/20'
+                  )}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-medium">{predictionData.signal.label_text}</span>
+                      <span className="text-sm text-muted-foreground">
+                        {predictionData.signal.confidence_pct}% confidence
+                      </span>
+                    </div>
+                    <p className="text-sm">{predictionData.signal.action_text}</p>
+                  </div>
+
+                  {/* Price Mode */}
+                  <div className="text-center p-2 bg-muted rounded">
+                    <p className="text-sm text-muted-foreground">Harga Modus</p>
+                    <p className="font-semibold text-lg">{formatRupiah(predictionData.price_mode)}</p>
+                  </div>
+
+                  {/* Predictions List */}
+                  <div className="space-y-2 max-h-40 overflow-y-auto">
+                    {predictionData.predictions.map((pred, index) => (
+                      <div key={pred.date} className="flex items-center justify-between py-2 px-3 bg-muted/50 rounded text-sm">
+                        <span className="text-muted-foreground">{formatDate(pred.date)}</span>
+                        <div className="text-right">
+                          <div className="font-medium">{formatRupiah(pred.predicted_price)}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {formatRupiah(pred.price_low)} - {formatRupiah(pred.price_high)}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {predictionData.cached && (
+                    <p className="text-xs text-muted-foreground text-center">
+                      Data dari cache
+                    </p>
+                  )}
+                </div>
+              ) : loadingPredictions ? (
+                <div className="space-y-3">
+                  <div className="h-16 bg-muted animate-pulse rounded" />
+                  <div className="h-8 bg-muted animate-pulse rounded" />
+                  <div className="space-y-2">
+                    {[1, 2, 3].map(i => (
+                      <div key={i} className="h-12 bg-muted animate-pulse rounded" />
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <p className="text-center text-muted-foreground py-4">
+                  Gagal memuat prediksi
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Stats Grid */}
           <div className="grid grid-cols-2 gap-3">
             <StatCard
@@ -170,15 +252,14 @@ export function CommodityDetailSheet({
   )
 }
 
-function StatCard({
-  label,
-  value,
-  icon,
-}: {
+// Stat Card Component
+interface StatCardProps {
   label: string
   value: string
   icon: React.ReactNode
-}) {
+}
+
+function StatCard({ label, value, icon }: StatCardProps) {
   return (
     <Card>
       <CardContent className="p-3">
@@ -186,7 +267,7 @@ function StatCard({
           {icon}
           <span className="text-xs text-muted-foreground">{label}</span>
         </div>
-        <p className="font-semibold">{value}</p>
+        <p className="font-semibold text-sm">{value}</p>
       </CardContent>
     </Card>
   )
