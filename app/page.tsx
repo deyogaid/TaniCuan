@@ -2,9 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import dynamic from 'next/dynamic'
 import { useMarkets, useDashboardData } from '@/lib/hooks/use-market-data'
-import { MarketPills } from '@/components/market-selector'
+import { MarketSelector } from '@/components/market-selector'
 import { CommodityCard } from '@/components/commodity-card'
 import { DashboardHeader } from '@/components/dashboard-header'
 import { LoadingSkeleton } from '@/components/loading-skeleton'
@@ -13,24 +12,12 @@ import { MobileNav } from '@/components/mobile-nav'
 import { MarketOverview } from '@/components/market-overview'
 import { RecentTransactions } from '@/components/recent-transactions'
 import { NearestMarketsCard } from '@/components/nearest-markets-card'
+import { CommodityDetailSheet } from '@/components/commodity-detail-sheet'
+import { AIPredictionChat } from '@/components/ai-prediction-chat'
 import type { Market, CommodityPriceData } from '@/lib/types'
 import type { GeoLocation } from '@/lib/distance-utils'
 import { RefreshCw, MapPin } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-
-// Dynamic import for CommodityDetailSheet to avoid static flag issues
-const CommodityDetailSheet = dynamic(
-  () => import('@/components/commodity-detail-sheet').then(mod => ({ default: mod.CommodityDetailSheet })),
-  { ssr: false }
-)
-
-const AIPredictionChat = dynamic(
-  () => import('@/components/ai-prediction-chat').then(mod => ({ default: mod.AIPredictionChat })),
-  {
-    ssr: false,
-    loading: () => <div className="text-center py-4 text-sm text-muted-foreground">Memuat chat...</div>,
-  }
-)
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -112,7 +99,7 @@ export default function DashboardPage() {
               ))}
             </div>
           ) : markets && markets.length > 0 ? (
-            <MarketPills
+            <MarketSelector
               markets={markets}
               selectedMarket={selectedMarket}
               onSelectMarket={setSelectedMarket}

@@ -43,7 +43,10 @@ export function MarketSelector({
           <ChevronDown className="w-4 h-4 opacity-50 flex-shrink-0" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)]" align="start">
+      <DropdownMenuContent
+        className="w-[var(--radix-dropdown-menu-trigger-width)] min-w-[18rem] max-h-[28rem] overflow-y-auto"
+        align="start"
+      >
         {markets.map((market) => (
           <DropdownMenuItem
             key={market.id}
@@ -51,17 +54,17 @@ export function MarketSelector({
               onSelectMarket(market)
               setOpen(false)
             }}
-            className="flex items-center justify-between"
+            className="flex flex-col gap-1 rounded-lg p-2 hover:bg-accent hover:text-accent-foreground"
           >
-            <div className="flex flex-col">
-              <span className="font-medium">{market.name}</span>
-              <span className="text-xs text-muted-foreground">
-                {market.location}, {market.province}
-              </span>
+            <div className="flex items-center justify-between gap-3">
+              <div className="truncate font-medium">{market.name}</div>
+              {selectedMarket?.id === market.id && (
+                <Check className="w-4 h-4 text-primary" />
+              )}
             </div>
-            {selectedMarket?.id === market.id && (
-              <Check className="w-4 h-4 text-primary" />
-            )}
+            <div className="text-xs text-muted-foreground truncate">
+              {market.city || 'Kota tidak dikenal'}, {market.province || 'Provinsi tidak dikenal'}
+            </div>
           </DropdownMenuItem>
         ))}
       </DropdownMenuContent>

@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/react'
 import './globals.css'
 import { InteractiveMenu } from '@/components/interactive-menu'
+import { MobileDropdownMenu } from '@/components/mobile-dropdown-menu'
 
 const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
@@ -92,10 +93,17 @@ export default function RootLayout({
             <InteractiveMenu categories={menuCategories} />
           </aside>
 
-          {/* Main Content */}
-          <main className="flex-1">
-            {children}
-          </main>
+          <div className="flex-1">
+            {/* Mobile Dropdown Menu */}
+            <header className="lg:hidden sticky top-0 z-40 border-b border-border bg-card px-4 py-3 shadow-sm shadow-slate-950/5 backdrop-blur-sm">
+              <MobileDropdownMenu />
+            </header>
+
+            {/* Main Content */}
+            <main className="flex-1 min-h-screen px-4 py-4 pb-24 sm:px-6 lg:px-8">
+              {children}
+            </main>
+          </div>
         </div>
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
