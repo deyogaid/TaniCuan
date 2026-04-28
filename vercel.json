@@ -1,0 +1,23 @@
+{
+    "framework": "nextjs",
+    "installCommand": "pnpm install --no-frozen-lockfile",
+    "buildCommand": "pnpm run build",
+    "crons": [
+        {
+            "path": "/api/scraper/fetch-prices",
+            "schedule": "0 * * * *"
+        },
+        {
+            "path": "/api/scraper/fetch-prices",
+            "schedule": "0 19,20,21,22 * * *"
+        },
+        {
+            "path": "/api/predictions/generate",
+            "schedule": "0 15 * * *"
+        },
+        {
+            "path": "/api/notifications/morning-alert",
+            "schedule": "30 21 * * *"
+        }
+    ]
+}
