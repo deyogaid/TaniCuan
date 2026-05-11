@@ -36,7 +36,7 @@ export function MobileNav({ activeTab = 'home', onTabChange }: MobileNavProps) {
                   : 'text-muted-foreground hover:text-foreground'
               )}
             >
-              <Icon className={cn('w-5 h-5', isActive && 'fill-primary/20')} />
+              <Icon className={cn('w-5 h-5', isActive && 'fill-primary')} />
               <span className="text-[10px] font-medium">{item.label}</span>
             </button>
           )

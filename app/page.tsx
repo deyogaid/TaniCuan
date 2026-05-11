@@ -14,6 +14,8 @@ import { RecentTransactions } from '@/components/recent-transactions'
 import { NearestMarketsCard } from '@/components/nearest-markets-card'
 import { CommodityDetailSheet } from '@/components/commodity-detail-sheet'
 import { AIPredictionChat } from '@/components/ai-prediction-chat'
+import { PromoBanner } from '@/components/promo-banner'
+import { CategoryMenu } from '@/components/category-menu'
 import type { Market, CommodityPriceData } from '@/lib/types'
 import type { GeoLocation } from '@/lib/distance-utils'
 import { RefreshCw, MapPin } from 'lucide-react'
@@ -89,9 +91,15 @@ export default function DashboardPage() {
       <DashboardHeader onRefresh={handleRefresh} isRefreshing={isLoading} />
 
       {/* Main Content */}
-      <main className="flex-1 px-4 pb-20">
-        {/* Market Selector */}
-        <section className="py-4">
+      <main className="flex-1 pb-20 max-w-7xl mx-auto w-full">
+        {/* Promo Banner */}
+        <PromoBanner />
+
+        {/* Category Menu */}
+        <CategoryMenu />
+
+        {/* Market Selector & Filter */}
+        <section className="px-4 py-2">
           {loadingMarkets ? (
             <div className="flex gap-2 overflow-hidden">
               {[1, 2, 3].map(i => (
@@ -108,7 +116,7 @@ export default function DashboardPage() {
         </section>
 
         {/* Nearest Markets Section */}
-        <section className="py-4 mb-4">
+        <section className="px-4 py-4 mb-2 bg-card mt-2 border-y">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <MapPin className="w-5 h-5 text-primary" />
@@ -181,9 +189,9 @@ export default function DashboardPage() {
         )}
 
         {/* Commodity Grid */}
-        <section>
+        <section className="px-4 mt-2">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="font-semibold text-lg">Harga Komoditas</h2>
+            <h2 className="font-bold text-lg">Rekomendasi Untukmu</h2>
             {isLoading && (
               <RefreshCw className="w-4 h-4 animate-spin text-muted-foreground" />
             )}
@@ -206,7 +214,7 @@ export default function DashboardPage() {
               <p>Belum ada data harga</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
               {commodityData.map(data => (
                 <CommodityCard
                   key={data.commodity.id}

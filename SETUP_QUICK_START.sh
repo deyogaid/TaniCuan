@@ -11,7 +11,7 @@ echo ""
 echo "📦 Step 1: Backup database (optional)..."
 echo "# Create backup dari Supabase dashboard"
 echo ""
-
+npm 
 # 2. Run migrations
 echo "🔧 Step 2: Run database migrations..."
 echo "# Di Supabase SQL editor, jalankan:"
