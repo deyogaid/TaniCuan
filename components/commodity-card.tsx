@@ -88,40 +88,47 @@ export function CommodityCard({ data, onClick, isSelected }: CommodityCardProps)
   return (
     <Card
       className={cn(
-        'cursor-pointer transition-all duration-200 hover:shadow-md active:scale-[0.98]',
+        'cursor-pointer transition-all duration-200 hover:shadow-md active:scale-[0.98] overflow-hidden flex flex-col',
         isSelected && 'ring-2 ring-primary shadow-md'
       )}
       onClick={onClick}
     >
-      <CardContent className="p-4">
-        {/* Header: Icon, Name, Signal */}
-        <div className="flex items-start justify-between mb-3">
-          <div className="flex items-center gap-3">
-            <CommodityIcon name={commodity.name} />
-            <div>
-              <h3 className="font-semibold text-sm leading-tight">{commodity.name}</h3>
-              <p className="text-xs text-muted-foreground">per {commodity.unit}</p>
-            </div>
-          </div>
-          <SignalBadge signal={signal} />
+      {/* Product Image Placeholder */}
+      <div className={cn(
+        'w-full aspect-square flex flex-col items-center justify-center bg-secondary/50',
+        getCommodityColor(commodity.name).replace('text-', 'text-opacity-0 bg-')
+      )}>
+         <div className={cn('text-6xl font-bold opacity-30', getCommodityColor(commodity.name).split(' ')[1])}>
+            {commodity.name.charAt(0)}
+         </div>
+      </div>
+
+      <CardContent className="p-3 flex-1 flex flex-col">
+        {/* Title & Signal */}
+        <div className="flex items-start justify-between gap-2 mb-2">
+          <h3 className="font-medium text-sm line-clamp-2 leading-tight flex-1">{commodity.name}</h3>
         </div>
 
         {/* Price */}
-        <div className="mb-3">
-          <div className="flex items-baseline gap-2">
-            <span className="text-xl font-bold">{formatRupiah(latestPrice)}</span>
-            <div className={cn(
-              'flex items-center gap-0.5 text-xs font-medium',
-              isPositive ? 'text-[oklch(0.55_0.18_145)]' : 'text-[oklch(0.55_0.2_25)]'
-            )}>
-              <PriceChangeIndicator change={priceChangePercent} />
-              <span>{formatPercent(priceChangePercent)}</span>
-            </div>
+        <div className="mt-auto">
+          <div className="text-base font-bold mb-1">{formatRupiah(latestPrice)}</div>
+          
+          <div className="flex flex-wrap items-center justify-between gap-2">
+             <div className="flex items-center gap-1">
+               <span className={cn(
+                 'text-[10px] px-1.5 py-0.5 rounded font-bold',
+                 isPositive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+               )}>
+                 {isPositive ? '+' : ''}{formatPercent(priceChangePercent)}
+               </span>
+               <span className="text-[10px] text-muted-foreground">/ {commodity.unit}</span>
+             </div>
+             <SignalBadge signal={signal} />
           </div>
         </div>
 
-        {/* Mini Chart */}
-        <div className="h-16 -mx-1">
+        {/* Mini Chart (Optional, keep it very small at the bottom or hide) */}
+        <div className="h-8 -mx-1 mt-3 opacity-60">
           <MiniCandlestickChart data={ohlcData} />
         </div>
       </CardContent>
